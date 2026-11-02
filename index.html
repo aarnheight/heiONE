@@ -147,43 +147,18 @@ input[type=date]{min-width:0;-webkit-appearance:none;appearance:none}
 <div class="sheetbg" id="bg" onclick="if(event.target===this)closeS()"><div class="sheet" id="sh"></div></div>
 <div class="toast" id="toast"></div>
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
 <script>
-// Клиент к собственному серверу (.NET). Повторяет небольшой кусок интерфейса прежнего клиента,
-// поэтому остальной код приложения почти не менялся. Права проверяет СЕРВЕР, а не этот файл.
-const API=(window.FINANCE_CONFIG&&FINANCE_CONFIG.api)||'';
-var authCb=null;
-async function ah(path,body){
- try{const r=await fetch(API+path,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'ah'},body:JSON.stringify(body||{})});
-  var j={};try{j=await r.json()}catch(e){}
-  if(r.status==401&&path.indexOf('/api/auth/')!==0&&sbUser&&authCb){authCb('SIGNED_OUT',null)}
-  return j}catch(e){return{error:{message:'Нет связи с сервером'}}}}
-function Qb(t){this.s={t:t,op:'select',f:[],o:[]}}
-Qb.prototype={
- select:function(){if(this.s.op!='select')this.s.ret=true;return this},
- insert:function(p){this.s.op='insert';this.s.p=p;return this},
- update:function(p){this.s.op='update';this.s.p=p;return this},
- upsert:function(p){this.s.op='upsert';this.s.p=p;return this},
- eq:function(c,v){this.s.f.push([c,'eq',v]);return this},
- in:function(c,v){this.s.f.push([c,'in',v]);return this},
- order:function(c,o){this.s.o.push([c,o&&o.ascending===false?'desc':'asc']);return this},
- limit:function(n){this.s.l=n;return this},
- single:function(){this.s.one='single';return this},
- maybeSingle:function(){this.s.one='maybe';return this},
- then:function(a,b){return ah('/api/q',this.s).then(function(j){return{data:j.data===undefined?null:j.data,error:j.error||null}}).then(a,b)}
-};
-const sb={
- from:function(t){return new Qb(t)},
- rpc:function(n,a){return ah('/api/rpc/'+n,a).then(function(j){return{data:j.data===undefined?null:j.data,error:j.error||null}})},
- auth:{
-  onAuthStateChange:function(cb){authCb=cb;ah('/api/auth/me').then(function(j){cb(j.data?'SIGNED_IN':'SIGNED_OUT',j.data?{user:j.data}:null)})},
-  signInWithPassword:async function(o){const j=await ah('/api/auth/login',{login:o.email,password:o.password});if(j.data&&authCb)authCb('SIGNED_IN',{user:j.data});return{data:j.data,error:j.error}},
-  signUp:async function(o){const j=await ah('/api/auth/signup',{login:o.email,password:o.password,name:o.options.data.display_name});if(j.data&&authCb)authCb('SIGNED_IN',{user:j.data});return{data:{session:j.data?{user:j.data}:null},error:j.error}},
-  signOut:async function(){await ah('/api/auth/logout');if(authCb)authCb('SIGNED_OUT',null)},
-  updateUser:async function(o){const d=o.data||{};const j=await ah('/api/auth/profile',{display_name:d.display_name,active_org_id:d.active_org_id});return{data:{user:j.data},error:j.error}}
- }
-};
+// Клиент Supabase. Адрес проекта и публичный (anon) ключ берутся из config.js.
+const CFG=window.FINANCE_CONFIG||{};
+var sb=null;
+try{if(window.supabase)sb=window.supabase.createClient(CFG.url||'https://kmjiuonrcifllfudpjwx.supabase.co',CFG.key||'sb_publishable_CwVDC3nxMz4vn40Lme1DYg_WdC60v2b',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})}catch(e){console.error(e)}
+var PHONE_DOM='@'+(CFG.phoneDomain||'phone.arnheight.app');
+function loginToEmail(s){var n=normLogin(s);if(!n)return(s||'').trim();return n.indexOf('@')>=0?n:n+PHONE_DOM}
+function loginShow(e){return e&&e.slice(-PHONE_DOM.length)===PHONE_DOM?'+'+e.slice(0,-PHONE_DOM.length):(e||'')}
 
-var TH=[['pink','🎀 Розовая (как была)','#ffe1ec',['#ffe1ec','#ff9fc4','#ffc2a8']],['bw','◼ Чёрно-белая строгая','#ffffff',['#ffffff','#000000','#cfcfcf']],['business','🏢 Официально-деловая','#eef1f6',['#eef1f6','#1f3a5f','#c9d7ee']],['anime','✨ Мультяшно-анимешная','#eaf0ff',['#eaf0ff','#c9b6ff','#8ec5ff']],['minimal','▫️ Минимализм','#fafaf7',['#fafaf7','#222222','#e8e8e3']]],CT=document.documentElement.getAttribute('data-theme')||'pink';
+var TH=[['pink','Классическая розовая','#ffe1ec',['#ffe1ec','#ff9fc4','#ffc2a8']],['bw','Монохромная','#ffffff',['#ffffff','#000000','#cfcfcf']],['business','Деловая','#eef1f6',['#eef1f6','#1f3a5f','#c9d7ee']],['anime','Пастельная сиреневая','#eaf0ff',['#eaf0ff','#c9b6ff','#8ec5ff']],['minimal','Минималистичная','#fafaf7',['#fafaf7','#222222','#e8e8e3']]],CT=document.documentElement.getAttribute('data-theme')||'pink';
 function applyTheme(t){if(!TH.some(function(x){return x[0]==t}))t='pink';CT=t;document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('ah_theme',t)}catch(e){}var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=TH.filter(function(x){return x[0]==t})[0][2]}
 function setTheme(t){applyTheme(t);if(!VIEWING){S.theme=t;save()}themeOpen()}
 function themeOpen(){shOpen('<h2 style="font-size:19px">🎨 Тема оформления</h2><div class="lbl">Выбор сохраняется в твоём аккаунте и подхватывается на других устройствах</div>'+TH.map(function(x){return'<div class="row thm" onclick="setTheme(\''+x[0]+'\')"><div class="sw">'+x[3].map(function(c){return'<i style="background:'+c+'"></i>'}).join('')+'</div><div class="t"><div>'+x[1]+'</div></div>'+(CT==x[0]?'<div class="s">✓</div>':'')+'</div>'}).join('')+'<button class="btn alt" style="width:100%;margin-top:12px" onclick="closeS()">Готово</button>')}
@@ -194,12 +169,12 @@ function setMode(m){amode=m;document.getElementById('amIn').className=m=='in'?'o
 function pwScore(p){var s=0;if(p.length>=8)s++;if(p.length>=12)s++;if(/[a-zа-я]/.test(p)&&/[A-ZА-Я]/.test(p))s++;if(/\d/.test(p))s++;if(/[^\w\s]/.test(p))s++;return s}
 function authHint(){var p=document.getElementById('authpass').value,h=document.getElementById('authhint');h.textContent=(amode!='up'||!p)?'':'Надёжность: '+['очень слабый','слабый','средний','хороший','сильный','отличный'][pwScore(p)]+' · минимум 8 символов, буквы и цифры'}
 function authGo(){if(abusy)return;abusy=true;setTimeout(function(){abusy=false},2500);amode=='up'?doSignup():doLogin()}
-async function doLogin(){if(!sb)return authMessage('Нет связи с сервером');const email=document.getElementById('authemail').value.trim(),password=document.getElementById('authpass').value;if(!email||!password)return authMessage('Введи почту и пароль');authMessage('Входим…');const {error}=await sb.auth.signInWithPassword({email,password});authMessage(error?authFriendly(error):'Вход выполнен')}
-async function doSignup(){if(!sb)return authMessage('Нет связи с сервером');const name=document.getElementById('authname').value.trim(),email=document.getElementById('authemail').value.trim(),password=document.getElementById('authpass').value,p2=document.getElementById('authpass2').value;
+async function doLogin(){if(!sb)return authMessage('Нет связи с сервером (не загрузилась библиотека Supabase). Проверь интернет');const raw=document.getElementById('authemail').value.trim(),password=document.getElementById('authpass').value;if(!raw||!password)return authMessage('Введи почту и пароль');if(!normLogin(raw))return authMessage('Проверь телефон (11 цифр) или почту');authMessage('Входим…');try{const {data,error}=await sb.auth.signInWithPassword({email:loginToEmail(raw),password});if(error)return authMessage(authFriendly(error));if(!data||!data.session)return authMessage('Сервер не вернул сессию. Попробуй ещё раз');authMessage('Вход выполнен')}catch(e){authMessage('Нет связи с сервером')}}
+async function doSignup(){if(!sb)return authMessage('Нет связи с сервером (не загрузилась библиотека Supabase). Проверь интернет');const name=document.getElementById('authname').value.trim(),email=document.getElementById('authemail').value.trim(),password=document.getElementById('authpass').value,p2=document.getElementById('authpass2').value;
  if(!document.getElementById('authok').checked)return authMessage('Поставь галочку согласия с политикой конфиденциальности');if(name.length<2)return authMessage('Напиши, как тебя зовут: так тебя увидят коллеги');if(!normLogin(email))return authMessage('Проверь телефон (11 цифр) или почту');
  if(password.length<8||!/\d/.test(password)||!/[a-zA-Zа-яА-Я]/.test(password))return authMessage('Пароль: минимум 8 символов, буквы и цифры');if(/^(12345678|qwerty123|password1|11111111|123456789)$/i.test(password))return authMessage('Этот пароль слишком простой');
  if(password!==p2)return authMessage('Пароли не совпадают');authMessage('Создаём аккаунт…');
- const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name}}});if(error)return authMessage(authFriendly(error));
+ const {data,error}=await sb.auth.signUp({email:loginToEmail(email),password,options:{data:{display_name:name},emailRedirectTo:'https://aarnheight.github.io/finance-/'}});if(error)return authMessage(authFriendly(error));
  authMessage(data.session?'Аккаунт создан, вход выполнен.':'Аккаунт создан. Открой письмо и подтверди почту, потом войди.')}
 function authFriendly(e){let m=(e&&e.message)||String(e);if(/invalid login/i.test(m))return 'Неверная почта или пароль';if(/not confirmed/i.test(m))return 'Подтверди почту по письму, потом входи';if(/already registered|already been registered/i.test(m))return 'Такая почта уже зарегистрирована. Войди или нажми «Забыл пароль»';if(/rate limit|too many|security purposes/i.test(m))return 'Слишком много попыток. Подожди минуту';if(/banned/i.test(m))return 'Аккаунт заблокирован владельцем';if(/weak|password should/i.test(m))return 'Пароль слишком простой';if(/invalid.*otp|otp.*expired/i.test(m))return 'Код неверный или истёк. Запроси новый.';return m}
 
@@ -207,7 +182,7 @@ async function doLogout(){await sb.auth.signOut()}
 function setAuthUI(user){const gate=document.getElementById('authgate'),btn=document.getElementById('profileBtn');if(user){gate.style.display='none';btn.style.display='block';refreshProfileAvatar()}else{gate.style.display='flex';btn.style.display='none';closeProfile()}}
 function refreshProfileAvatar(){const b=document.getElementById('profileBtn');if(!b||!sbUser)return;const n=(sbUser.user_metadata?.display_name||sbUser.email||'?').trim();b.textContent=(n[0]||'?').toUpperCase()}
 function profileNote(t){const e=document.getElementById('profileMsg');if(e)e.textContent=t}
-async function openProfile(){if(!sbUser)return;document.getElementById('profileShade').style.display='flex';document.getElementById('profileName').value=sbUser.user_metadata?.display_name||'';document.getElementById('profileEmail').value=sbUser.email||'';profileNote('');await profileLoadOrgs()}
+async function openProfile(){if(!sbUser){document.getElementById('authgate').style.display='flex';setMode('in');return}document.getElementById('profileShade').style.display='flex';document.getElementById('profileName').value=sbUser.user_metadata?.display_name||'';document.getElementById('profileEmail').value=loginShow(sbUser.email);profileNote('');await profileLoadOrgs()}
 function closeProfile(){const e=document.getElementById('profileShade');if(e)e.style.display='none'}
 async function saveProfile(){if(!sbUser)return;const name=document.getElementById('profileName').value.trim();profileNote('Сохраняю…');const u=await sb.auth.updateUser({data:{...sbUser.user_metadata,display_name:name}});if(u.error)return profileNote('Ошибка: '+u.error.message);const p=await sb.from('profiles').upsert({id:sbUser.id,display_name:name},{onConflict:'id'});if(p.error)return profileNote('Имя сохранено в аккаунте, но профиль не обновлён: '+p.error.message);sbUser=u.data.user||sbUser;refreshProfileAvatar();profileNote('Профиль сохранён')}
 async function profileLoadOrgs(){const sel=document.getElementById('profileOrg');sel.innerHTML='<option value="">Загрузка…</option>';let rows=[];try{const m=await sb.from('organization_members').select('organization_id').eq('user_id',sbUser.id);if(m.error)throw m.error;const ids=(m.data||[]).map(x=>x.organization_id);if(ids.length){const o=await sb.from('organizations').select('id,name,is_active').in('id',ids).order('name');if(o.error)throw o.error;rows=o.data||[]}if(REV.global){const o=await sb.from('organizations').select('id,name,is_active').order('name');if(!o.error)rows=o.data||[]}}catch(e){profileNote('Не удалось загрузить заведения: '+e.message)}REV.orgs=rows;const active=REV.org||sbUser.user_metadata?.active_org_id||'';sel.innerHTML='<option value="">Не выбрано</option>'+rows.map(o=>'<option value="'+o.id+'">'+revEsc(o.name)+(o.is_active?'':' (выключено)')+'</option>').join('');sel.value=rows.some(o=>o.id===active)?active:(rows[0]?.id||'')}
@@ -217,10 +192,10 @@ var lastPush='',cloudBusy=false;
 function syncState(t){var e=document.getElementById('sync');if(e){e.textContent={ok:'☁️',wait:'⏳',off:'⚠️'}[t]||'';e.title={ok:'Синхронизировано',wait:'Сохраняю…',off:'Нет связи: сохранено на телефоне'}[t]||''}}
 function lsKey(){return sbUser?'smeny_u_'+sbUser.id:'smeny_v1'}
 function resetS(){S=JSON.parse(DEF);norm()}
-function localMode(){document.getElementById('authgate').style.display='none';document.getElementById('profileBtn').style.display='none'}
-function doReset(){authMessage('Пароль сбрасывает управляющий или владелец: попроси его задать новый (Ревизия → Участники). Потом смени пароль в профиле.')}
+function localMode(){document.getElementById('authgate').style.display='none';var b=document.getElementById('profileBtn');if(!sbUser){b.textContent='👤';b.title='Войти';b.style.display='block'}else b.style.display='block'}
+async function doReset(){if(!sb)return;const email=document.getElementById('authemail').value.trim();if(!email||email.indexOf('@')<0)return authMessage('Введи почту, на неё придёт ссылка. Если вход по телефону, пароль задаст управляющий (Ревизия → Участники → 🔑)');const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://aarnheight.github.io/finance-/'});authMessage(error?authFriendly(error):'Письмо отправлено. Открой ссылку из него.')}
 function normLogin(s){s=(s||'').trim();if(s.indexOf('@')>=0)return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)?s.toLowerCase():null;var d=s.replace(/\D/g,'');if(d.length==11&&(d[0]=='8'||d[0]=='7'))return '7'+d.slice(1);if(d.length==10)return '7'+d;return null}
-async function newPass(){var o=prompt('Текущий пароль');if(!o)return;var n=prompt('Новый пароль (минимум 8 символов, буквы и цифры)');if(!n)return;const j=await ah('/api/auth/password',{old:o,new:n});toast(j.error?j.error.message:'Пароль обновлён ✨')}
+async function newPass(){if(!sb||!sbUser)return;var n=prompt('Новый пароль (минимум 8 символов, буквы и цифры)');if(!n)return;if(n.length<8||!/\d/.test(n)||!/[a-zA-Zа-яА-Я]/.test(n))return toast('Пароль: минимум 8 символов, буквы и цифры');const r=await sb.auth.updateUser({password:n});toast(r.error?r.error.message:'Пароль обновлён ✨')}
 async function loadCloud(user){
  if(cloudBusy||(sbUser&&sbUser.id===user.id&&cloudReady)){if(sbUser&&sbUser.id===user.id)sbUser=user;return}
  cloudBusy=true;sbUser=user;cloudReady=false;setAuthUI(user);
@@ -449,7 +424,7 @@ async function revFlush(){if(REV.fl||!sb||!sbUser||!REV.session)return;REV.fl=tr
 function stp2(id,f,l,v){return'<div class="stp"><div class="lbl" style="margin:0 0 3px 4px">'+l+'</div><div class="flex" style="gap:3px"><button class="sb" onclick="revBump(\''+id+'\',\''+f+'\',-1)">−</button><input class="si" data-f="'+f+'" type="number" inputmode="numeric" min="0" value="'+(v||0)+'" onchange="revSet(\''+id+'\',\''+f+'\',this.value)"><button class="sb" onclick="revBump(\''+id+'\',\''+f+'\',1)">＋</button></div></div>'}
 function revHTML(){
  if(!sb)return'<div class="card empty">Ревизия работает онлайн. Сейчас нет связи с сервером.</div>';
- if(!sbUser)return'<div class="card empty">Войди в аккаунт, чтобы вести общую ревизию.</div>';
+ if(!sbUser)return'<div class="card empty">Войди в аккаунт, чтобы вести общую ревизию.<br><button class="btn" style="margin-top:12px" onclick="openProfile()">Войти или зарегистрироваться</button></div>';
  if(REV.busy&&!REV.orgs.length)return'<div class="card empty">Загружаю заведения…</div>';
  if(REV.err)return'<div class="card">Ошибка: '+revEsc(REV.err)+'<button class="btn" style="width:100%;margin-top:10px" onclick="revEnter()">Повторить</button></div>';
  var adm=canInv(),stf=canStaff(),run=myRank()>=10,h='<div class="card"><div class="rev-head"><h2 style="margin:0">📦 Ревизия</h2><button class="pill" style="border:0;cursor:pointer;margin-left:auto;font-weight:800" onclick="revSwitch()">📍 '+revEsc(curName())+' ▾</button></div><div class="rev-actions">'+(REV.global?'<button class="btn" onclick="revCreateOrg()">＋ Заведение</button>':'')+'<button class="btn alt" onclick="revJoinOrg()">Ввести код</button>'+(REV.org?'<button class="btn alt" onclick="revHistory()">🕘 История</button>':'')+(stf?'<button class="btn alt" onclick="netOpen()">📊 Сеть</button>':'')+(REV.org&&stf?'<button class="btn alt" onclick="revMakeCode()">Код приглашения</button><button class="btn alt" onclick="revMembers()">Участники</button>':'')+'</div></div>';
